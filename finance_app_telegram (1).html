@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мой бюджет</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+:root{--bg:#f5f5f0;--surface:#fff;--surface2:#f1efe8;--border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);--text:#1a1a18;--text2:#6b6b66;--text3:#9b9b96;--accent:#534AB7;--accent-l:#EEEDFE;--accent-t:#26215C;--green:#0F6E56;--green-l:#E1F5EE;--red:#993C1D;--red-l:#FAECE7;--radius:12px;--radius-sm:8px;}
+body.dark{--bg:#1a1a18;--surface:#252523;--surface2:#2e2e2b;--border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);--text:#f0ede8;--text2:#a0a09a;--text3:#6b6b66;--accent-l:#2d2960;--accent-t:#CEC8F6;--green-l:#0d3328;--red-l:#3d1a0d;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;transition:background 0.25s,color 0.25s;}
+.header{background:var(--surface);padding:52px 16px 14px;border-bottom:0.5px solid var(--border);position:sticky;top:0;z-index:10;}
+.nav{display:flex;background:var(--surface);border-top:0.5px solid var(--border);position:fixed;bottom:0;left:0;right:0;max-width:100%;margin:0 auto;z-index:10;padding-bottom:env(safe-area-inset-bottom);}
+.nav-btn{flex:1;padding:10px 2px 8px;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9px;color:var(--text3);}
+.nav-btn.active{color:var(--accent);}
+.nav-btn i{font-size:20px;}
+.page{display:none;padding:12px 12px 90px;}
+.page.active{display:block;}
+.card{background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);padding:14px;margin-bottom:12px;}
+.section-title{font-size:13px;font-weight:500;color:var(--text2);margin:12px 0 8px;}
+.balance-amount{font-size:30px;font-weight:600;}
+.pos{color:var(--green);}
+.neg{color:var(--red);}
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.stat-card{background:var(--surface);border-radius:var(--radius-sm);border:0.5px solid var(--border);padding:12px;}
+.stat-label{font-size:11px;color:var(--text2);margin-bottom:4px;}
+.stat-val{font-size:18px;font-weight:600;}
+.tx-list{background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);overflow:hidden;}
+.tx-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:0.5px solid var(--border);}
+.tx-item:last-child{border-bottom:none;}
+.tx-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.fab{position:fixed;bottom:calc(62px + env(safe-area-inset-bottom));right:16px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(83,74,183,0.4);z-index:9;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-width:430px;max-height:88vh;overflow-y:auto;}
+.modal h3{font-size:17px;font-weight:600;margin-bottom:16px;}
+.form-group{margin-bottom:12px;}
+.form-group label{font-size:12px;color:var(--text2);display:block;margin-bottom:5px;}
+.form-group input,.form-group select{width:100%;padding:11px 13px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);color:var(--text);font-size:16px;-webkit-appearance:none;}
+.type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.type-btn{padding:11px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:14px;color:var(--text2);}
+.type-btn.active-inc{background:var(--green-l);color:var(--green);border-color:#5DCAA5;}
+.type-btn.active-exp{background:var(--red-l);color:var(--red);border-color:#F0997B;}
+.btn-primary{width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:16px;font-weight:600;cursor:pointer;margin-top:6px;}
+.btn-cancel{width:100%;padding:12px;background:none;border:none;color:var(--text2);font-size:15px;cursor:pointer;margin-top:8px;}
+.progress-bar{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:6px;}
+.progress-fill{height:100%;background:var(--accent);border-radius:4px;}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:100px;}
+.bar-group{flex:1;display:flex;gap:2px;align-items:flex-end;}
+.bar{flex:1;border-radius:3px 3px 0 0;min-height:4px;}
+.empty-state{text-align:center;padding:32px 16px;color:var(--text3);font-size:14px;}
+.empty-state i{font-size:38px;display:block;margin-bottom:10px;opacity:0.35;}
+/* Capital tabs */
+.cap-tabs{display:flex;gap:0;margin-bottom:14px;background:var(--surface2);border-radius:var(--radius-sm);padding:3px;}
+.cap-tab{flex:1;padding:9px;border-radius:6px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);text-align:center;}
+.cap-tab.active{background:var(--surface);color:var(--accent);}
+.capital-hero{background:var(--accent-l);border-radius:var(--radius);padding:16px;margin-bottom:12px;border:0.5px solid var(--border);}
+.rule-tabs{display:flex;gap:6px;margin-bottom:12px;}
+.rule-tab{flex:1;padding:9px 4px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);text-align:center;}
+.rule-tab.active{background:var(--accent-l);color:var(--accent);border-color:#AFA9EC;}
+.alloc-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid var(--border);}
+.alloc-row:last-child{border-bottom:none;}
+.alloc-highlight{background:var(--accent-l);border-radius:var(--radius-sm);padding:10px 12px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;}
+.rule-desc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm);}
+.year-tabs{display:flex;gap:6px;margin-bottom:10px;}
+.year-tab{flex:1;padding:8px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);text-align:center;}
+.year-tab.active{background:var(--accent-l);color:var(--accent);border-color:#AFA9EC;}
+.growth-result{background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-top:8px;}
+.tip-card{border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;background:var(--surface);border:0.5px solid var(--border);border-left:3px solid var(--accent);}
+.tip-title{font-size:13px;font-weight:600;margin-bottom:4px;}
+.tip-text{font-size:12px;color:var(--text2);line-height:1.6;}
+.small-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.small-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.small-input{width:100%;padding:9px 10px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);color:var(--text);font-size:14px;-webkit-appearance:none;}
+/* Debt */
+.debt-hero{background:var(--red-l);border-radius:var(--radius);padding:16px;margin-bottom:12px;border:0.5px solid var(--border);}
+.debt-card{background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);padding:14px;margin-bottom:10px;}
+.debt-progress{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:6px;}
+.debt-fill{height:100%;border-radius:4px;}
+/* Reminders */
+.reminder-card{background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;}
+.badge{font-size:11px;padding:4px 9px;border-radius:10px;white-space:nowrap;}
+/* Settings */
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:0.5px solid var(--border);}
+.settings-row:last-child{border-bottom:none;}
+.settings-label{font-size:15px;color:var(--text);}
+.settings-sub{font-size:12px;color:var(--text2);margin-top:2px;}
+.toggle{width:48px;height:28px;border-radius:14px;background:var(--border2);position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;border:none;outline:none;}
+.toggle.on{background:var(--accent);}
+.toggle::after{content:'';position:absolute;width:22px;height:22px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.25);}
+.toggle.on::after{transform:translateX(20px);}
+.theme-picker{display:flex;gap:6px;}
+.theme-opt{padding:7px 12px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:13px;color:var(--text2);}
+.theme-opt.active{background:var(--accent-l);color:var(--accent);border-color:#AFA9EC;}
+/* Notification banner */
+.notif-bar{position:fixed;top:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--accent);color:#fff;padding:14px 16px 12px;z-index:200;display:flex;align-items:center;gap:10px;transform:translateY(-110%);transition:transform 0.4s cubic-bezier(0.34,1.4,0.64,1);}
+.notif-bar.show{transform:translateY(0);}
+.notif-close{margin-left:auto;background:none;border:none;color:#fff;cursor:pointer;font-size:20px;padding:2px;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div class="notif-bar" id="notif-bar">
+  <i class="ti ti-bell" style="font-size:20px;flex-shrink:0;"></i>
+  <div style="flex:1;min-width:0;">
+    <div style="font-size:13px;font-weight:600;" id="notif-title">Напоминание</div>
+    <div style="font-size:12px;opacity:0.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="notif-text"></div>
+  </div>
+  <button class="notif-close" onclick="closeNotif()"><i class="ti ti-x"></i></button>
+</div>
+
+<div class="header">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div style="font-size:12px;color:var(--text2);">Мой бюджет</div>
+      <div style="font-size:16px;font-weight:600;" id="header-month"></div>
+    </div>
+    <button id="settings-btn" onclick="toggleSettings()" style="background:none;border:none;cursor:pointer;color:var(--text2);padding:4px;">
+      <i class="ti ti-settings" style="font-size:22px;"></i>
+    </button>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="page active" id="page-home">
+  <div class="card" style="margin-top:4px;">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">Баланс месяца</div>
+    <div class="balance-amount pos" id="balance-display">0</div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">Доходы</div><div class="stat-val pos" id="total-inc">0</div></div>
+    <div class="stat-card"><div class="stat-label">Расходы</div><div class="stat-val neg" id="total-exp">0</div></div>
+  </div>
+  <div class="section-title">Последние операции</div>
+  <div class="tx-list" id="tx-list"><div class="empty-state"><i class="ti ti-receipt-off"></i>Нажми + чтобы добавить операцию</div></div>
+</div>
+
+<!-- CAPITAL -->
+<div class="page" id="page-capital">
+  <div class="cap-tabs" style="margin-top:4px;">
+    <button class="cap-tab active" id="captab-growth" onclick="switchCapTab('growth')">
+      <i class="ti ti-trending-up" style="font-size:14px;vertical-align:-2px;margin-right:4px;"></i>Капитал
+    </button>
+    <button class="cap-tab" id="captab-debts" onclick="switchCapTab('debts')">
+      <i class="ti ti-credit-card" style="font-size:14px;vertical-align:-2px;margin-right:4px;"></i>Долги
+    </button>
+  </div>
+
+  <!-- Growth sub-section -->
+  <div id="cap-growth">
+    <div class="capital-hero">
+      <div style="font-size:15px;font-weight:600;color:var(--accent-t);margin-bottom:4px;">Формирование капитала</div>
+      <div style="font-size:12px;color:var(--accent);">Введи доход — узнай, сколько откладывать</div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Мой ежемесячный доход</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+        <input type="number" id="my-income" placeholder="Например: 5000" oninput="calcAlloc()" style="flex:1;padding:11px 13px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);color:var(--text);font-size:16px;">
+        <span style="font-size:15px;color:var(--text2);" id="income-currency-label">$</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:500;">Стратегия распределения</div>
+      <div class="rule-tabs">
+        <div class="rule-tab active" onclick="setRule('503020',this)">50/30/20</div>
+        <div class="rule-tab" onclick="setRule('702010',this)">70/20/10</div>
+        <div class="rule-tab" onclick="setRule('custom',this)">Своя</div>
+      </div>
+      <div class="rule-desc" id="rule-desc">50% — необходимое (еда, аренда, транспорт), 30% — желания (кафе, развлечения), 20% — сбережения и инвестиции.</div>
+      <div id="custom-inputs" style="display:none;margin-bottom:12px;">
+        <div class="small-grid3">
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">Нужды %</label><input class="small-input" type="number" id="c1" value="50" oninput="calcAlloc()"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">Желания %</label><input class="small-input" type="number" id="c2" value="30" oninput="calcAlloc()"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">Сбережения %</label><input class="small-input" type="number" id="c3" value="20" oninput="calcAlloc()"></div>
+        </div>
+      </div>
+      <div class="alloc-row"><span style="font-size:14px;">Нужды <span style="font-size:12px;color:var(--text2);" id="pct1">50%</span></span><span style="font-size:14px;font-weight:600;color:var(--accent);" id="amt1">—</span></div>
+      <div class="alloc-row"><span style="font-size:14px;">Желания <span style="font-size:12px;color:var(--text2);" id="pct2">30%</span></span><span style="font-size:14px;font-weight:600;color:var(--accent);" id="amt2">—</span></div>
+      <div class="alloc-highlight">
+        <span style="font-size:14px;font-weight:600;color:var(--accent-t);">Откладывать <span style="font-size:12px;font-weight:400;color:var(--accent);" id="pct3">20%</span></span>
+        <span style="font-size:20px;font-weight:700;color:var(--accent);" id="amt3">—</span>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Рост накоплений</div>
+      <div class="small-grid">
+        <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">Сумма в месяц</label><input class="small-input" type="number" id="g-monthly" placeholder="1000" oninput="calcGrowth()"></div>
+        <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">Доходность % год</label><input class="small-input" type="number" id="g-rate" placeholder="10" oninput="calcGrowth()"></div>
+      </div>
+      <div class="year-tabs">
+        <div class="year-tab" onclick="setYears(1,this)">1 год</div>
+        <div class="year-tab active" onclick="setYears(5,this)">5 лет</div>
+        <div class="year-tab" onclick="setYears(10,this)">10 лет</div>
+        <div class="year-tab" onclick="setYears(20,this)">20 лет</div>
+      </div>
+      <div class="growth-result">
+        <div style="font-size:24px;font-weight:700;color:var(--green);" id="growth-result">—</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;" id="growth-label">Введи данные выше</div>
+      </div>
+    </div>
+    <div class="section-title">Советы</div>
+    <div class="tip-card"><div class="tip-title">Правило первой зарплаты</div><div class="tip-text">Переводи сбережения в первый день — не то, что осталось, а заранее запланированную сумму.</div></div>
+    <div class="tip-card" style="border-left-color:#1D9E75;"><div class="tip-title">Подушка безопасности — сначала</div><div class="tip-text">Накопи 3–6 месячных расходов на отдельном счёте. Это фундамент перед инвестициями.</div></div>
+    <div class="tip-card" style="border-left-color:#BA7517;"><div class="tip-title">Сила сложного процента</div><div class="tip-text">$500/мес при 10% годовых за 20 лет = ~$380 000. Вложено $120 000 — остальное рост.</div></div>
+    <div class="tip-card" style="border-left-color:#D85A30;"><div class="tip-title">С чего начать</div><div class="tip-text">Сберегательный счёт — Облигации — Индексные фонды (ETF). Начинай с простого.</div></div>
+  </div>
+
+  <!-- Debts sub-section -->
+  <div id="cap-debts" style="display:none;">
+    <div class="debt-hero">
+      <div style="font-size:15px;font-weight:600;color:var(--red);margin-bottom:4px;">Учёт долгов</div>
+      <div style="font-size:12px;color:var(--red);">Отслеживай кто кому должен</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Мне должны</div><div class="stat-val pos" id="debt-owed-me">0</div></div>
+      <div class="stat-card"><div class="stat-label">Я должен</div><div class="stat-val neg" id="debt-i-owe">0</div></div>
+    </div>
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:2px;">Чистая позиция</div>
+        <div style="font-size:22px;font-weight:700;" id="debt-net">0</div>
+      </div>
+      <i class="ti ti-scale" style="font-size:30px;color:var(--text3);"></i>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="section-title" style="margin:0;">Список долгов</div>
+      <button style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;font-weight:600;" onclick="openDebtModal()">
+        <i class="ti ti-plus"></i> Добавить
+      </button>
+    </div>
+    <div id="debts-list">
+      <div class="empty-state"><i class="ti ti-credit-card-off"></i>Долгов нет. Нажми + чтобы добавить.</div>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="page" id="page-stats">
+  <div class="section-title" style="margin-top:4px;">Доходы и расходы</div>
+  <div class="card">
+    <div style="display:flex;gap:14px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:50%;background:#1D9E75;"></div>Доходы</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:50%;background:#D85A30;"></div>Расходы</div>
+    </div>
+    <div class="bar-chart" id="bar-chart"></div>
+    <div style="display:flex;gap:6px;margin-top:6px;" id="bar-labels"></div>
+  </div>
+  <div class="section-title">По категориям</div>
+  <div class="card" id="cat-chart"><div class="empty-state"><i class="ti ti-chart-pie"></i>Добавь расходы чтобы увидеть статистику</div></div>
+</div>
+
+<!-- GOALS -->
+<div class="page" id="page-goals">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;margin-bottom:8px;">
+    <div class="section-title" style="margin:0;">Мои цели</div>
+    <button style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;font-weight:600;" onclick="openGoalModal()"><i class="ti ti-plus"></i> Добавить</button>
+  </div>
+  <div id="goals-list"><div class="empty-state"><i class="ti ti-target"></i>Добавь первую цель накопления!</div></div>
+</div>
+
+<!-- REMIND -->
+<div class="page" id="page-remind">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;margin-bottom:8px;">
+    <div class="section-title" style="margin:0;">Напоминания</div>
+    <button style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;font-weight:600;" onclick="openRemindModal()"><i class="ti ti-plus"></i> Добавить</button>
+  </div>
+  <div id="remind-list"><div class="empty-state"><i class="ti ti-bell-off"></i>Нет напоминаний</div></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="page" id="page-settings">
+  <div class="section-title" style="margin-top:4px;">Внешний вид</div>
+  <div class="card">
+    <div class="settings-row" style="border-bottom:none;">
+      <div><div class="settings-label">Тема приложения</div><div class="settings-sub">Светлая или тёмная</div></div>
+      <div class="theme-picker">
+        <div class="theme-opt active" id="theme-light" onclick="setTheme('light')">☀️ Светлая</div>
+        <div class="theme-opt" id="theme-dark" onclick="setTheme('dark')">🌙 Тёмная</div>
+      </div>
+    </div>
+  </div>
+  <div class="section-title">Уведомления</div>
+  <div class="card">
+    <div class="settings-row">
+      <div><div class="settings-label">Уведомления</div><div class="settings-sub">Показывать когда приложение открыто</div></div>
+      <button class="toggle on" id="toggle-notif" onclick="toggleNotif()"></button>
+    </div>
+    <div class="settings-row" style="border-bottom:none;">
+      <div><div class="settings-label">Напоминать за</div><div class="settings-sub">Дней до даты платежа</div></div>
+      <select id="notif-days" style="padding:7px 10px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);color:var(--text);font-size:14px;" onchange="saveSettings()">
+        <option value="0">В сам день</option>
+        <option value="1" selected>За 1 день</option>
+        <option value="3">За 3 дня</option>
+        <option value="7">За 7 дней</option>
+      </select>
+    </div>
+  </div>
+  <div class="section-title">Данные</div>
+  <div class="card">
+    <div class="settings-row">
+      <div><div class="settings-label">Валюта</div><div class="settings-sub">Отображается везде в приложении</div></div>
+      <select id="currency-sel" style="padding:7px 10px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);color:var(--text);font-size:14px;" onchange="saveCurrency()">
+        <option value="$">$ Доллар</option>
+        <option value="EUR">€ Евро</option>
+        <option value="RUB">₽ Рубль</option>
+        <option value="KZT">₸ Тенге</option>
+      </select>
+    </div>
+    <div class="settings-row" style="border-bottom:none;">
+      <div><div class="settings-label" style="color:var(--red);">Очистить данные</div><div class="settings-sub">Удалить все записи навсегда</div></div>
+      <button onclick="clearData()" style="padding:8px 14px;background:var(--red-l);color:var(--red);border:0.5px solid var(--red);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:600;">Удалить</button>
+    </div>
+  </div>
+  <div class="section-title">О приложении</div>
+  <div class="card">
+    <div style="font-size:13px;color:var(--text2);line-height:1.8;">Мой бюджет · Версия 4.0<br>Финансовый трекер с капиталом и долгами<br>Данные хранятся локально на устройстве.</div>
+  </div>
+</div>
+
+<button class="fab" onclick="openAddModal()" aria-label="Добавить"><i class="ti ti-plus"></i></button>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('home',this)"><i class="ti ti-home"></i>Главная</button>
+  <button class="nav-btn" onclick="showPage('capital',this)"><i class="ti ti-trending-up"></i>Капитал</button>
+  <button class="nav-btn" onclick="showPage('stats',this)"><i class="ti ti-chart-bar"></i>Статистика</button>
+  <button class="nav-btn" onclick="showPage('goals',this)"><i class="ti ti-target"></i>Копилка</button>
+  <button class="nav-btn" onclick="showPage('remind',this)"><i class="ti ti-bell"></i>Напоминания</button>
+</nav>
+
+<!-- ADD TRANSACTION MODAL -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <h3>Новая операция</h3>
+    <div class="type-toggle">
+      <button class="type-btn active-inc" id="btn-inc" onclick="setType('income')"><i class="ti ti-arrow-down-right"></i> Доход</button>
+      <button class="type-btn" id="btn-exp" onclick="setType('expense')"><i class="ti ti-arrow-up-right"></i> Расход</button>
+    </div>
+    <div class="form-group"><label>Сумма</label><input type="number" id="tx-amount" placeholder="0" inputmode="decimal"></div>
+    <div class="form-group"><label>Название</label><input type="text" id="tx-name" placeholder="Зарплата, продукты..."></div>
+    <div class="form-group"><label>Категория</label>
+      <select id="tx-cat">
+        <option value="Зарплата">Зарплата</option><option value="Фриланс">Фриланс</option><option value="Другой доход">Другой доход</option>
+        <option value="Еда">Еда</option><option value="Транспорт">Транспорт</option><option value="Жильё">Жильё</option>
+        <option value="Здоровье">Здоровье</option><option value="Развлечения">Развлечения</option><option value="Одежда">Одежда</option><option value="Другое">Другое</option>
+      </select>
+    </div>
+    <button class="btn-primary" onclick="addTransaction()">Добавить</button>
+    <button class="btn-cancel" onclick="closeModal('add-modal')">Отмена</button>
+  </div>
+</div>
+
+<!-- GOAL MODAL -->
+<div class="modal-overlay" id="goal-modal">
+  <div class="modal">
+    <h3>Новая цель</h3>
+    <div class="form-group"><label>Название</label><input type="text" id="goal-name" placeholder="Отпуск, телефон..."></div>
+    <div class="form-group"><label>Целевая сумма</label><input type="number" id="goal-target" placeholder="5000" inputmode="decimal"></div>
+    <div class="form-group"><label>Уже накоплено</label><input type="number" id="goal-saved" placeholder="0" inputmode="decimal"></div>
+    <button class="btn-primary" onclick="addGoal()">Создать цель</button>
+    <button class="btn-cancel" onclick="closeModal('goal-modal')">Отмена</button>
+  </div>
+</div>
+
+<!-- REMINDER MODAL -->
+<div class="modal-overlay" id="remind-modal">
+  <div class="modal">
+    <h3>Новое напоминание</h3>
+    <div class="form-group"><label>Название</label><input type="text" id="remind-name" placeholder="Оплата аренды..."></div>
+    <div class="form-group"><label>Дата</label><input type="date" id="remind-date"></div>
+    <div class="form-group"><label>Сумма (необязательно)</label><input type="number" id="remind-amount" placeholder="0" inputmode="decimal"></div>
+    <button class="btn-primary" onclick="addReminder()">Добавить</button>
+    <button class="btn-cancel" onclick="closeModal('remind-modal')">Отмена</button>
+  </div>
+</div>
+
+<!-- DEBT MODAL -->
+<div class="modal-overlay" id="debt-modal">
+  <div class="modal">
+    <h3>Новый долг</h3>
+    <div class="type-toggle">
+      <button class="type-btn active-inc" id="btn-debt-in" onclick="setDebtDir('in')"><i class="ti ti-arrow-down-right"></i> Мне должны</button>
+      <button class="type-btn" id="btn-debt-out" onclick="setDebtDir('out')"><i class="ti ti-arrow-up-right"></i> Я должен</button>
+    </div>
+    <div class="form-group"><label>Имя (кто / кому)</label><input type="text" id="debt-person" placeholder="Иван, Банк, Мама..."></div>
+    <div class="form-group"><label>Сумма долга</label><input type="number" id="debt-amount" placeholder="1000" inputmode="decimal"></div>
+    <div class="form-group"><label>Уже выплачено</label><input type="number" id="debt-paid-inp" placeholder="0" inputmode="decimal"></div>
+    <div class="form-group"><label>Срок погашения (необязательно)</label><input type="date" id="debt-due"></div>
+    <div class="form-group"><label>Комментарий (необязательно)</label><input type="text" id="debt-note" placeholder="За что / детали..."></div>
+    <button class="btn-primary" onclick="addDebt()">Добавить долг</button>
+    <button class="btn-cancel" onclick="closeModal('debt-modal')">Отмена</button>
+  </div>
+</div>
+
+<script>
+var tg = window.Telegram && window.Telegram.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  // Sync theme with Telegram
+  if (tg.colorScheme === 'dark') {
+    document.body.classList.add('dark');
+  }
+  tg.onEvent('themeChanged', function() {
+    if (tg.colorScheme === 'dark') document.body.classList.add('dark');
+    else document.body.classList.remove('dark');
+  });
+}
+
+var MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+var NOW = new Date();
+document.getElementById('header-month').textContent = MONTHS[NOW.getMonth()] + ' ' + NOW.getFullYear();
+
+var txType = 'income';
+var debtDir = 'in';
+var transactions = JSON.parse(localStorage.getItem('fin_tx') || '[]');
+var goals = JSON.parse(localStorage.getItem('fin_goals') || '[]');
+var reminders = JSON.parse(localStorage.getItem('fin_remind') || '[]');
+var debts = JSON.parse(localStorage.getItem('fin_debts') || '[]');
+var settings = JSON.parse(localStorage.getItem('fin_settings') || '{}');
+if (!settings.theme) settings.theme = 'light';
+if (settings.notif === undefined) settings.notif = true;
+if (!settings.notifDays) settings.notifDays = 1;
+if (!settings.currency) settings.currency = '$';
+
+var currentRule = '503020';
+var growthYears = 5;
+var notifTimer = null;
+
+var cats = {
+  income: ['Зарплата','Фриланс','Другой доход'],
+  expense: ['Еда','Транспорт','Жильё','Здоровье','Развлечения','Одежда','Другое']
+};
+var catIcons = {'Зарплата':'💼','Фриланс':'💻','Другой доход':'💰','Еда':'🛒','Транспорт':'🚌','Жильё':'🏠','Здоровье':'💊','Развлечения':'🎬','Одежда':'👕','Другое':'📦'};
+var catColors = ['#534AB7','#1D9E75','#D85A30','#378ADD','#BA7517','#D4537E','#639922'];
+
+function fmt(n) {
+  return settings.currency + Number(n).toLocaleString('ru-RU');
+}
+
+function applyTheme() {
+  document.body.classList.toggle('dark', settings.theme === 'dark');
+  document.getElementById('theme-light').classList.toggle('active', settings.theme === 'light');
+  document.getElementById('theme-dark').classList.toggle('active', settings.theme === 'dark');
+}
+
+function setTheme(t) { settings.theme = t; saveSettings(); applyTheme(); }
+
+function toggleNotif() {
+  settings.notif = !settings.notif;
+  document.getElementById('toggle-notif').classList.toggle('on', settings.notif);
+  saveSettings();
+  if (settings.notif) showNotif('Уведомления включены', 'Будем напоминать об операциях');
+}
+
+function saveSettings() {
+  var nd = document.getElementById('notif-days');
+  if (nd) settings.notifDays = parseInt(nd.value);
+  localStorage.setItem('fin_settings', JSON.stringify(settings));
+}
+
+function saveCurrency() {
+  var sel = document.getElementById('currency-sel').value;
+  var map = {'$':'$','EUR':'€','RUB':'₽','KZT':'₸'};
+  settings.currency = map[sel] || sel;
+  document.getElementById('income-currency-label').textContent = settings.currency;
+  saveSettings();
+  renderHome(); renderGoals(); renderReminders(); renderDebts();
+}
+
+function clearData() {
+  if (!confirm('Удалить все данные? Это нельзя отменить.')) return;
+  transactions = []; goals = []; reminders = []; debts = [];
+  localStorage.removeItem('fin_tx'); localStorage.removeItem('fin_goals');
+  localStorage.removeItem('fin_remind'); localStorage.removeItem('fin_debts');
+  renderHome(); renderGoals(); renderReminders(); renderDebts();
+  showNotif('Данные удалены', 'Приложение очищено');
+}
+
+function toggleSettings() {
+  var page = document.getElementById('page-settings');
+  var btn = document.getElementById('settings-btn');
+  var isOpen = page.classList.contains('active');
+  if (isOpen) {
+    // close settings, restore previous active page
+    page.classList.remove('active');
+    var prev = document.querySelector('.nav-btn.active');
+    if (prev) {
+      var pid = prev.getAttribute('onclick').match(/showPage\('(\w+)'/);
+      if (pid) document.getElementById('page-' + pid[1]).classList.add('active');
+    } else {
+      document.getElementById('page-home').classList.add('active');
+    }
+    btn.querySelector('i').style.color = '';
+  } else {
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    page.classList.add('active');
+    btn.querySelector('i').style.color = 'var(--accent)';
+  }
+}
+
+function loadSettings() {
+  applyTheme();
+  document.getElementById('toggle-notif').classList.toggle('on', settings.notif);
+  document.getElementById('notif-days').value = settings.notifDays;
+  var curMap = {'$':'$','€':'EUR','₽':'RUB','₸':'KZT'};
+  document.getElementById('currency-sel').value = curMap[settings.currency] || '$';
+  document.getElementById('income-currency-label').textContent = settings.currency;
+}
+
+function showNotif(title, text) {
+  if (!settings.notif) return;
+  document.getElementById('notif-title').textContent = title;
+  document.getElementById('notif-text').textContent = text;
+  var bar = document.getElementById('notif-bar');
+  bar.classList.add('show');
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(function() { bar.classList.remove('show'); }, 4000);
+}
+
+function closeNotif() {
+  clearTimeout(notifTimer);
+  document.getElementById('notif-bar').classList.remove('show');
+}
+
+function checkReminders() {
+  if (!settings.notif) return;
+  var today = new Date(); today.setHours(0,0,0,0);
+  reminders.forEach(function(r) {
+    var d = new Date(r.date); d.setHours(0,0,0,0);
+    var diff = Math.ceil((d - today) / (1000*60*60*24));
+    if (diff === settings.notifDays) {
+      var label = settings.notifDays === 0 ? 'сегодня' : settings.notifDays === 1 ? 'завтра' : 'через ' + settings.notifDays + ' дн.';
+      showNotif('Напоминание', r.name + ' — ' + label + (r.amount ? ' · ' + fmt(r.amount) : ''));
+    }
+  });
+}
+
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('page-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'stats') renderStats();
+}
+
+function switchCapTab(tab) {
+  document.getElementById('captab-growth').classList.toggle('active', tab === 'growth');
+  document.getElementById('captab-debts').classList.toggle('active', tab === 'debts');
+  document.getElementById('cap-growth').style.display = tab === 'growth' ? 'block' : 'none';
+  document.getElementById('cap-debts').style.display = tab === 'debts' ? 'block' : 'none';
+  if (tab === 'debts') renderDebts();
+}
+
+function setType(t) {
+  txType = t;
+  document.getElementById('btn-inc').className = 'type-btn' + (t === 'income' ? ' active-inc' : '');
+  document.getElementById('btn-exp').className = 'type-btn' + (t === 'expense' ? ' active-exp' : '');
+  var sel = document.getElementById('tx-cat');
+  sel.innerHTML = (t === 'income' ? cats.income : cats.expense).map(function(c) {
+    return '<option value="' + c + '">' + c + '</option>';
+  }).join('');
+}
+
+function setDebtDir(dir) {
+  debtDir = dir;
+  document.getElementById('btn-debt-in').className = 'type-btn' + (dir === 'in' ? ' active-inc' : '');
+  document.getElementById('btn-debt-out').className = 'type-btn' + (dir === 'out' ? ' active-exp' : '');
+}
+
+function openAddModal() { document.getElementById('add-modal').classList.add('open'); setType('income'); }
+function openGoalModal() { document.getElementById('goal-modal').classList.add('open'); }
+function openRemindModal() { document.getElementById('remind-modal').classList.add('open'); }
+function openDebtModal() { document.getElementById('debt-modal').classList.add('open'); setDebtDir('in'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(function(el) {
+  el.addEventListener('click', function(e) { if (e.target === el) el.classList.remove('open'); });
+});
+
+function addTransaction() {
+  var amt = parseFloat(document.getElementById('tx-amount').value);
+  var name = document.getElementById('tx-name').value.trim() || 'Без названия';
+  var cat = document.getElementById('tx-cat').value;
+  if (!amt || amt <= 0) return;
+  var n = new Date();
+  transactions.unshift({id: Date.now(), type: txType, amount: amt, name: name, cat: cat,
+    date: n.toLocaleDateString('ru-RU'), month: n.getMonth(), year: n.getFullYear()});
+  localStorage.setItem('fin_tx', JSON.stringify(transactions));
+  document.getElementById('tx-amount').value = '';
+  document.getElementById('tx-name').value = '';
+  closeModal('add-modal');
+  renderHome();
+  showNotif(txType === 'income' ? 'Доход добавлен' : 'Расход добавлен',
+    (txType === 'income' ? '+' : '-') + fmt(amt) + ' · ' + name);
+}
+
+function addGoal() {
+  var name = document.getElementById('goal-name').value.trim();
+  var target = parseFloat(document.getElementById('goal-target').value) || 0;
+  var saved = parseFloat(document.getElementById('goal-saved').value) || 0;
+  if (!name || !target) return;
+  goals.push({id: Date.now(), name: name, target: target, saved: saved});
+  localStorage.setItem('fin_goals', JSON.stringify(goals));
+  document.getElementById('goal-name').value = '';
+  document.getElementById('goal-target').value = '';
+  document.getElementById('goal-saved').value = '';
+  closeModal('goal-modal');
+  renderGoals();
+  showNotif('Цель создана', name + ' · ' + fmt(target));
+}
+
+function addReminder() {
+  var name = document.getElementById('remind-name').value.trim();
+  var date = document.getElementById('remind-date').value;
+  var amount = parseFloat(document.getElementById('remind-amount').value) || 0;
+  if (!name || !date) return;
+  reminders.push({id: Date.now(), name: name, date: date, amount: amount});
+  localStorage.setItem('fin_remind', JSON.stringify(reminders));
+  document.getElementById('remind-name').value = '';
+  document.getElementById('remind-date').value = '';
+  document.getElementById('remind-amount').value = '';
+  closeModal('remind-modal');
+  renderReminders();
+  showNotif('Напоминание добавлено', name);
+}
+
+function addDebt() {
+  var person = document.getElementById('debt-person').value.trim();
+  var amount = parseFloat(document.getElementById('debt-amount').value) || 0;
+  var paid = Math.min(parseFloat(document.getElementById('debt-paid-inp').value) || 0, amount);
+  var due = document.getElementById('debt-due').value;
+  var note = document.getElementById('debt-note').value.trim();
+  if (!person || !amount) return;
+  debts.push({id: Date.now(), dir: debtDir, person: person, amount: amount, paid: paid, due: due, note: note});
+  localStorage.setItem('fin_debts', JSON.stringify(debts));
+  document.getElementById('debt-person').value = '';
+  document.getElementById('debt-amount').value = '';
+  document.getElementById('debt-paid-inp').value = '';
+  document.getElementById('debt-due').value = '';
+  document.getElementById('debt-note').value = '';
+  closeModal('debt-modal');
+  renderDebts();
+  showNotif(debtDir === 'in' ? 'Долг добавлен (мне)' : 'Долг добавлен (мой)', person + ' · ' + fmt(amount));
+}
+
+function payDebt(id) {
+  var inp = document.getElementById('dpay-' + id);
+  var amt = parseFloat(inp.value) || 0;
+  if (!amt) return;
+  var d = null;
+  for (var i = 0; i < debts.length; i++) { if (debts[i].id === id) { d = debts[i]; break; } }
+  if (!d) return;
+  d.paid = Math.min(d.paid + amt, d.amount);
+  localStorage.setItem('fin_debts', JSON.stringify(debts));
+  inp.value = '';
+  renderDebts();
+  if (d.paid >= d.amount) showNotif('Долг погашен!', d.person + ' · ' + fmt(d.amount));
+  else showNotif('Платёж записан', d.person + ' · +' + fmt(amt));
+}
+
+function deleteDebt(id) {
+  if (!confirm('Удалить этот долг?')) return;
+  debts = debts.filter(function(d) { return d.id !== id; });
+  localStorage.setItem('fin_debts', JSON.stringify(debts));
+  renderDebts();
+}
+
+function renderHome() {
+  var n = new Date();
+  var mo = transactions.filter(function(t) { return t.month === n.getMonth() && t.year === n.getFullYear(); });
+  var inc = mo.filter(function(t) { return t.type === 'income'; }).reduce(function(s,t) { return s + t.amount; }, 0);
+  var exp = mo.filter(function(t) { return t.type === 'expense'; }).reduce(function(s,t) { return s + t.amount; }, 0);
+  var bal = inc - exp;
+  var el = document.getElementById('balance-display');
+  el.textContent = fmt(bal);
+  el.className = 'balance-amount' + (bal >= 0 ? ' pos' : ' neg');
+  document.getElementById('total-inc').textContent = fmt(inc);
+  document.getElementById('total-exp').textContent = fmt(exp);
+  var list = document.getElementById('tx-list');
+  if (!transactions.length) {
+    list.innerHTML = '<div class="empty-state"><i class="ti ti-receipt-off"></i>Нажми + чтобы добавить операцию</div>';
+    return;
+  }
+  var html = '';
+  var shown = transactions.slice(0, 10);
+  for (var i = 0; i < shown.length; i++) {
+    var t = shown[i];
+    var ic = catIcons[t.cat] || '📦';
+    var bg = t.type === 'income' ? 'var(--green-l)' : 'var(--red-l)';
+    var col = t.type === 'income' ? 'var(--green)' : 'var(--red)';
+    var sign = t.type === 'income' ? '+' : '-';
+    html += '<div class="tx-item">';
+    html += '<div class="tx-icon" style="background:' + bg + ';">' + ic + '</div>';
+    html += '<div style="flex:1;min-width:0;"><div style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + t.name + '</div>';
+    html += '<div style="font-size:11px;color:var(--text2);">' + t.cat + ' · ' + t.date + '</div></div>';
+    html += '<div style="font-size:14px;font-weight:600;color:' + col + ';flex-shrink:0;">' + sign + fmt(t.amount) + '</div>';
+    html += '</div>';
+  }
+  list.innerHTML = html;
+}
+
+function setRule(rule, el) {
+  currentRule = rule;
+  document.querySelectorAll('.rule-tab').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  var descs = {
+    '503020': '50% — необходимое (еда, аренда, транспорт), 30% — желания (кафе, развлечения), 20% — сбережения и инвестиции.',
+    '702010': '70% — все расходы на жизнь, 20% — сбережения и цели, 10% — инвестиции или погашение долгов.',
+    'custom': 'Настрой свои проценты. Рекомендуем откладывать не меньше 10% от дохода.'
+  };
+  document.getElementById('rule-desc').textContent = descs[rule];
+  document.getElementById('custom-inputs').style.display = rule === 'custom' ? 'block' : 'none';
+  calcAlloc();
+}
+
+function calcAlloc() {
+  var income = parseFloat(document.getElementById('my-income').value) || 0;
+  var p1, p2, p3;
+  if (currentRule === '503020') { p1=50; p2=30; p3=20; }
+  else if (currentRule === '702010') { p1=70; p2=20; p3=10; }
+  else {
+    p1 = parseFloat(document.getElementById('c1').value) || 0;
+    p2 = parseFloat(document.getElementById('c2').value) || 0;
+    p3 = parseFloat(document.getElementById('c3').value) || 0;
+  }
+  document.getElementById('pct1').textContent = p1 + '%';
+  document.getElementById('pct2').textContent = p2 + '%';
+  document.getElementById('pct3').textContent = p3 + '%';
+  document.getElementById('amt1').textContent = income ? fmt(Math.round(income * p1 / 100)) : '—';
+  document.getElementById('amt2').textContent = income ? fmt(Math.round(income * p2 / 100)) : '—';
+  document.getElementById('amt3').textContent = income ? fmt(Math.round(income * p3 / 100)) : '—';
+  if (income) { document.getElementById('g-monthly').value = Math.round(income * p3 / 100); calcGrowth(); }
+}
+
+function setYears(y, el) {
+  growthYears = y;
+  document.querySelectorAll('.year-tab').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  calcGrowth();
+}
+
+function calcGrowth() {
+  var monthly = parseFloat(document.getElementById('g-monthly').value) || 0;
+  var rate = parseFloat(document.getElementById('g-rate').value) || 0;
+  if (!monthly) {
+    document.getElementById('growth-result').textContent = '—';
+    document.getElementById('growth-label').textContent = 'Введи данные выше';
+    return;
+  }
+  var r = rate / 100 / 12;
+  var n = growthYears * 12;
+  var total = r === 0 ? monthly * n : monthly * (Math.pow(1 + r, n) - 1) / r;
+  var invested = monthly * n;
+  var profit = total - invested;
+  var yLabel = growthYears === 1 ? 'год' : growthYears < 5 ? 'года' : 'лет';
+  document.getElementById('growth-result').textContent = fmt(Math.round(total));
+  document.getElementById('growth-label').textContent =
+    'За ' + growthYears + ' ' + yLabel + ' · Вложено: ' + fmt(Math.round(invested)) + ' · Прирост: +' + fmt(Math.round(profit));
+}
+
+function renderStats() {
+  var n = new Date();
+  var mos = [];
+  for (var i = 5; i >= 0; i--) {
+    var d = new Date(n.getFullYear(), n.getMonth() - i, 1);
+    mos.push({month: d.getMonth(), year: d.getFullYear(), label: d.toLocaleDateString('ru-RU', {month: 'short'})});
+  }
+  var maxVal = 1;
+  mos.forEach(function(m) {
+    var tx = transactions.filter(function(t) { return t.month === m.month && t.year === m.year; });
+    var inc = tx.filter(function(t) { return t.type === 'income'; }).reduce(function(s,t) { return s+t.amount; }, 0);
+    var exp = tx.filter(function(t) { return t.type === 'expense'; }).reduce(function(s,t) { return s+t.amount; }, 0);
+    if (inc > maxVal) maxVal = inc;
+    if (exp > maxVal) maxVal = exp;
+  });
+  var bhtml = '';
+  mos.forEach(function(m) {
+    var tx = transactions.filter(function(t) { return t.month === m.month && t.year === m.year; });
+    var inc = tx.filter(function(t) { return t.type === 'income'; }).reduce(function(s,t) { return s+t.amount; }, 0);
+    var exp = tx.filter(function(t) { return t.type === 'expense'; }).reduce(function(s,t) { return s+t.amount; }, 0);
+    var ih = Math.round(inc / maxVal * 90);
+    var eh = Math.round(exp / maxVal * 90);
+    bhtml += '<div class="bar-group"><div class="bar" style="height:' + ih + 'px;background:#1D9E75;"></div><div class="bar" style="height:' + eh + 'px;background:#D85A30;"></div></div>';
+  });
+  document.getElementById('bar-chart').innerHTML = bhtml;
+  var lhtml = '';
+  mos.forEach(function(m) {
+    lhtml += '<div style="flex:1;text-align:center;font-size:10px;color:var(--text3);">' + m.label + '</div>';
+  });
+  document.getElementById('bar-labels').innerHTML = lhtml;
+  var expTx = transactions.filter(function(t) { return t.type === 'expense'; });
+  var catEl = document.getElementById('cat-chart');
+  if (!expTx.length) {
+    catEl.innerHTML = '<div class="empty-state"><i class="ti ti-chart-pie"></i>Добавь расходы чтобы увидеть статистику</div>';
+    return;
+  }
+  var catTotals = {};
+  expTx.forEach(function(t) { catTotals[t.cat] = (catTotals[t.cat] || 0) + t.amount; });
+  var total = Object.values(catTotals).reduce(function(s,v) { return s+v; }, 0);
+  var entries = Object.entries(catTotals).sort(function(a,b) { return b[1]-a[1]; });
+  var chtml = '';
+  entries.forEach(function(e, i) {
+    var pct = Math.round(e[1] / total * 100);
+    var col = catColors[i % catColors.length];
+    chtml += '<div style="margin-bottom:10px;">';
+    chtml += '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">';
+    chtml += '<span>' + e[0] + '</span>';
+    chtml += '<span style="color:var(--text2);">' + pct + '% · ' + fmt(e[1]) + '</span></div>';
+    chtml += '<div style="height:7px;background:var(--surface2);border-radius:4px;overflow:hidden;">';
+    chtml += '<div style="height:100%;width:' + pct + '%;background:' + col + ';border-radius:4px;"></div></div></div>';
+  });
+  catEl.innerHTML = chtml;
+}
+
+function renderGoals() {
+  var el = document.getElementById('goals-list');
+  if (!goals.length) {
+    el.innerHTML = '<div class="empty-state"><i class="ti ti-target"></i>Добавь первую цель накопления!</div>';
+    return;
+  }
+  var html = '';
+  goals.forEach(function(g) {
+    var pct = Math.min(Math.round(g.saved / g.target * 100), 100);
+    html += '<div class="card">';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">';
+    html += '<span style="font-size:15px;font-weight:600;">' + g.name + '</span>';
+    html += '<span style="font-size:13px;color:var(--text2);">' + pct + '%</span></div>';
+    html += '<div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%;"></div></div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:12px;">';
+    html += '<span>' + fmt(g.saved) + ' накоплено</span><span>Цель: ' + fmt(g.target) + '</span></div>';
+    html += '<div style="display:flex;gap:8px;">';
+    html += '<input type="number" placeholder="Добавить" inputmode="decimal" id="atg-' + g.id + '" style="flex:1;padding:9px 12px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);color:var(--text);font-size:14px;">';
+    html += '<button onclick="addToGoal(' + g.id + ')" style="padding:9px 14px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;font-weight:600;">+ Добавить</button>';
+    html += '</div></div>';
+  });
+  el.innerHTML = html;
+}
+
+function addToGoal(id) {
+  var inp = document.getElementById('atg-' + id);
+  var amt = parseFloat(inp.value) || 0;
+  if (!amt) return;
+  var g = null;
+  for (var i = 0; i < goals.length; i++) { if (goals[i].id === id) { g = goals[i]; break; } }
+  if (!g) return;
+  g.saved = Math.min(g.saved + amt, g.target);
+  localStorage.setItem('fin_goals', JSON.stringify(goals));
+  inp.value = '';
+  renderGoals();
+  if (g.saved >= g.target) showNotif('Цель достигнута!', g.name);
+  else showNotif('Пополнение копилки', g.name + ' · +' + fmt(amt));
+}
+
+function renderReminders() {
+  var el = document.getElementById('remind-list');
+  if (!reminders.length) {
+    el.innerHTML = '<div class="empty-state"><i class="ti ti-bell-off"></i>Нет напоминаний</div>';
+    return;
+  }
+  var today = new Date();
+  var html = '';
+  reminders.forEach(function(r) {
+    var d = new Date(r.date);
+    var diff = Math.ceil((d - today) / (1000*60*60*24));
+    var badge = diff < 0 ? 'Прошло' : diff === 0 ? 'Сегодня!' : diff === 1 ? 'Завтра' : 'Через ' + diff + ' дн.';
+    var bc = diff <= 1 && diff >= 0
+      ? 'background:var(--red-l);color:var(--red);'
+      : 'background:var(--accent-l);color:var(--accent);';
+    html += '<div class="reminder-card">';
+    html += '<div style="width:42px;height:42px;border-radius:50%;background:var(--accent-l);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent);flex-shrink:0;"><i class="ti ti-bell"></i></div>';
+    html += '<div style="flex:1;min-width:0;"><div style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + r.name + '</div>';
+    html += '<div style="font-size:11px;color:var(--text2);">' + d.toLocaleDateString('ru-RU') + (r.amount ? ' · ' + fmt(r.amount) : '') + '</div></div>';
+    html += '<div class="badge" style="' + bc + '">' + badge + '</div></div>';
+  });
+  el.innerHTML = html;
+}
+
+function renderDebts() {
+  var owedMe = debts.filter(function(d) { return d.dir === 'in'; })
+    .reduce(function(s,d) { return s + (d.amount - d.paid); }, 0);
+  var iOwe = debts.filter(function(d) { return d.dir === 'out'; })
+    .reduce(function(s,d) { return s + (d.amount - d.paid); }, 0);
+  var net = owedMe - iOwe;
+  document.getElementById('debt-owed-me').textContent = fmt(owedMe);
+  document.getElementById('debt-i-owe').textContent = fmt(iOwe);
+  var netEl = document.getElementById('debt-net');
+  netEl.textContent = (net >= 0 ? '+' : '') + fmt(net);
+  netEl.style.color = net >= 0 ? 'var(--green)' : 'var(--red)';
+
+  var el = document.getElementById('debts-list');
+  if (!debts.length) {
+    el.innerHTML = '<div class="empty-state"><i class="ti ti-credit-card-off"></i>Долгов нет. Нажми + чтобы добавить.</div>';
+    return;
+  }
+  var today = new Date(); today.setHours(0,0,0,0);
+  var html = '';
+  debts.forEach(function(d) {
+    var remaining = d.amount - d.paid;
+    var pct = Math.min(Math.round(d.paid / d.amount * 100), 100);
+    var isIn = d.dir === 'in';
+    var color = isIn ? 'var(--green)' : 'var(--red)';
+    var fillColor = isIn ? '#1D9E75' : '#D85A30';
+    var bgColor = isIn ? 'var(--green-l)' : 'var(--red-l)';
+    var dirLabel = isIn ? 'Мне должны' : 'Я должен';
+    var dueHtml = '';
+    if (d.due) {
+      var dd = new Date(d.due); dd.setHours(0,0,0,0);
+      var diff = Math.ceil((dd - today) / (1000*60*60*24));
+      if (diff < 0) dueHtml = ' <span style="color:var(--red);font-weight:600;">· Просрочен</span>';
+      else if (diff === 0) dueHtml = ' <span style="color:var(--red);">· Сегодня</span>';
+      else dueHtml = ' <span style="color:var(--text2);">· до ' + dd.toLocaleDateString('ru-RU') + '</span>';
+    }
+    var done = remaining <= 0;
+    html += '<div class="debt-card" style="opacity:' + (done ? '0.65' : '1') + ';">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">';
+    html += '<div><div style="font-size:15px;font-weight:600;">' + d.person + '</div>';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap;">';
+    html += '<span style="font-size:11px;padding:2px 8px;border-radius:8px;font-weight:600;background:' + bgColor + ';color:' + color + ';">' + dirLabel + '</span>';
+    html += '<span style="font-size:11px;color:var(--text2);">' + dueHtml + '</span></div></div>';
+    html += '<button onclick="deleteDebt(' + d.id + ')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;padding:2px;"><i class="ti ti-trash"></i></button>';
+    html += '</div>';
+    if (d.note) html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">' + d.note + '</div>';
+    html += '<div class="debt-progress"><div class="debt-fill" style="width:' + pct + '%;background:' + fillColor + ';"></div></div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:' + (done ? '0' : '10px') + ';">';
+    html += '<span>Осталось: <span style="font-weight:600;color:' + color + ';">' + fmt(remaining) + '</span></span>';
+    html += '<span>' + pct + '% из ' + fmt(d.amount) + '</span></div>';
+    if (!done) {
+      html += '<div style="display:flex;gap:8px;">';
+      html += '<input type="number" placeholder="Записать платёж" inputmode="decimal" id="dpay-' + d.id + '" style="flex:1;padding:8px 10px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;">';
+      html += '<button onclick="payDebt(' + d.id + ')" style="padding:8px 12px;background:' + fillColor + ';color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:600;">+ Платёж</button>';
+      html += '</div>';
+    } else {
+      html += '<div style="text-align:center;font-size:13px;font-weight:600;color:var(--green);margin-top:6px;">Погашен</div>';
+    }
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+loadSettings();
+renderHome();
+renderGoals();
+renderReminders();
+renderDebts();
+setTimeout(checkReminders, 1500);
+</script>
+</body>
+</html>
