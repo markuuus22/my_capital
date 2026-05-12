@@ -20,13 +20,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .page.active{display:block;}
 .card{background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);padding:14px;margin-bottom:12px;}
 .section-title{font-size:13px;font-weight:500;color:var(--text2);margin:12px 0 8px;}
-.balance-amount{font-size:30px;font-weight:600;}
+.balance-amount{font-size:clamp(18px,6vw,30px);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pos{color:var(--green);}
 .neg{color:var(--red);}
 .stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
 .stat-card{background:var(--surface);border-radius:var(--radius-sm);border:0.5px solid var(--border);padding:12px;}
 .stat-label{font-size:11px;color:var(--text2);margin-bottom:4px;}
-.stat-val{font-size:18px;font-weight:600;}
+.stat-val{font-size:clamp(13px,4vw,18px);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tx-list{background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);overflow:hidden;}
 .tx-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:0.5px solid var(--border);}
 .tx-item:last-child{border-bottom:none;}
@@ -396,7 +396,6 @@ var tg = window.Telegram && window.Telegram.WebApp;
 if (tg) {
   tg.ready();
   tg.expand();
-  // Sync theme with Telegram
   if (tg.colorScheme === 'dark') {
     document.body.classList.add('dark');
   }
@@ -404,6 +403,21 @@ if (tg) {
     if (tg.colorScheme === 'dark') document.body.classList.add('dark');
     else document.body.classList.remove('dark');
   });
+}
+
+function sendTgNotification(title, text) {
+  if (tg && tg.showPopup) {
+    try {
+      tg.showPopup({
+        title: title,
+        message: text,
+        buttons: [{type: 'ok'}]
+      });
+      return;
+    } catch(e) {}
+  }
+  // fallback to in-app banner
+  showNotif(title, text);
 }
 
 var MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
@@ -530,7 +544,7 @@ function checkReminders() {
     var diff = Math.ceil((d - today) / (1000*60*60*24));
     if (diff === settings.notifDays) {
       var label = settings.notifDays === 0 ? 'сегодня' : settings.notifDays === 1 ? 'завтра' : 'через ' + settings.notifDays + ' дн.';
-      showNotif('Напоминание', r.name + ' — ' + label + (r.amount ? ' · ' + fmt(r.amount) : ''));
+      sendTgNotification('Напоминание', r.name + ' — ' + label + (r.amount ? ' · ' + fmt(r.amount) : ''));
     }
   });
 }
@@ -812,6 +826,20 @@ function renderStats() {
   catEl.innerHTML = chtml;
 }
 
+function deleteGoal(id) {
+  if (!confirm('Удалить эту цель?')) return;
+  goals = goals.filter(function(g) { return g.id !== id; });
+  localStorage.setItem('fin_goals', JSON.stringify(goals));
+  renderGoals();
+}
+
+function deleteGoal(id) {
+  if (!confirm('Удалить эту цель?')) return;
+  goals = goals.filter(function(g) { return g.id !== id; });
+  localStorage.setItem('fin_goals', JSON.stringify(goals));
+  renderGoals();
+}
+
 function renderGoals() {
   var el = document.getElementById('goals-list');
   if (!goals.length) {
@@ -822,16 +850,21 @@ function renderGoals() {
   goals.forEach(function(g) {
     var pct = Math.min(Math.round(g.saved / g.target * 100), 100);
     html += '<div class="card">';
-    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
     html += '<span style="font-size:15px;font-weight:600;">' + g.name + '</span>';
-    html += '<span style="font-size:13px;color:var(--text2);">' + pct + '%</span></div>';
+    html += '<div style="display:flex;align-items:center;gap:8px;">';
+    html += '<span style="font-size:13px;color:var(--text2);">' + pct + '%</span>';
+    html += '<button onclick="deleteGoal(' + g.id + ')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;padding:2px;"><i class="ti ti-trash"></i></button>';
+    html += '</div></div>';
     html += '<div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%;"></div></div>';
     html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:12px;">';
     html += '<span>' + fmt(g.saved) + ' накоплено</span><span>Цель: ' + fmt(g.target) + '</span></div>';
     html += '<div style="display:flex;gap:8px;">';
     html += '<input type="number" placeholder="Добавить" inputmode="decimal" id="atg-' + g.id + '" style="flex:1;padding:9px 12px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);color:var(--text);font-size:14px;">';
     html += '<button onclick="addToGoal(' + g.id + ')" style="padding:9px 14px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;font-weight:600;">+ Добавить</button>';
-    html += '</div></div>';
+    html += '</div>';
+    html += '<button onclick="deleteGoal(' + g.id + ')" style="width:100%;margin-top:8px;padding:8px;background:none;border:0.5px solid var(--border2);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text3);"><i class="ti ti-trash"></i> Удалить цель</button>';
+    html += '</div>';
   });
   el.innerHTML = html;
 }
@@ -849,6 +882,20 @@ function addToGoal(id) {
   renderGoals();
   if (g.saved >= g.target) showNotif('Цель достигнута!', g.name);
   else showNotif('Пополнение копилки', g.name + ' · +' + fmt(amt));
+}
+
+function deleteReminder(id) {
+  if (!confirm('Удалить это напоминание?')) return;
+  reminders = reminders.filter(function(r) { return r.id !== id; });
+  localStorage.setItem('fin_remind', JSON.stringify(reminders));
+  renderReminders();
+}
+
+function deleteReminder(id) {
+  if (!confirm('Удалить это напоминание?')) return;
+  reminders = reminders.filter(function(r) { return r.id !== id; });
+  localStorage.setItem('fin_remind', JSON.stringify(reminders));
+  renderReminders();
 }
 
 function renderReminders() {
@@ -870,7 +917,10 @@ function renderReminders() {
     html += '<div style="width:42px;height:42px;border-radius:50%;background:var(--accent-l);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent);flex-shrink:0;"><i class="ti ti-bell"></i></div>';
     html += '<div style="flex:1;min-width:0;"><div style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + r.name + '</div>';
     html += '<div style="font-size:11px;color:var(--text2);">' + d.toLocaleDateString('ru-RU') + (r.amount ? ' · ' + fmt(r.amount) : '') + '</div></div>';
-    html += '<div class="badge" style="' + bc + '">' + badge + '</div></div>';
+    html += '<div style="display:flex;align-items:center;gap:6px;">';
+    html += '<div class="badge" style="' + bc + '">' + badge + '</div>';
+    html += '<button onclick="deleteReminder(' + r.id + ')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;padding:2px;"><i class="ti ti-trash"></i></button>';
+    html += '</div></div>';
   });
   el.innerHTML = html;
 }
