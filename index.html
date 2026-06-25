@@ -94,6 +94,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .theme-picker{display:flex;gap:6px;}
 .theme-opt{padding:7px 12px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:13px;color:var(--text2);}
 .theme-opt.active{background:var(--accent-l);color:var(--accent);border-color:#AFA9EC;}
+.ai-fab{position:fixed;bottom:calc(124px + env(safe-area-inset-bottom));right:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#534AB7,#7F77DD);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(83,74,183,0.5);z-index:9;}
+.ai-fab i{font-size:24px;}
+.ai-answer{background:var(--surface2);border-radius:var(--radius-sm);padding:14px;font-size:14px;line-height:1.6;color:var(--text);white-space:pre-wrap;margin-top:12px;max-height:50vh;overflow-y:auto;}
+.ai-loading{display:flex;align-items:center;gap:10px;color:var(--text2);font-size:14px;padding:12px;}
+.ai-spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
 /* Notification banner */
 .notif-bar{position:fixed;top:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--accent);color:#fff;padding:14px 16px 12px;z-index:200;display:flex;align-items:center;gap:10px;transform:translateY(-110%);transition:transform 0.4s cubic-bezier(0.34,1.4,0.64,1);}
 .notif-bar.show{transform:translateY(0);}
@@ -317,6 +323,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<button class="ai-fab" onclick="openAiModal()" aria-label="Спросить совет"><i class="ti ti-sparkles"></i></button>
+
 <button class="fab" onclick="openAddModal()" aria-label="Добавить"><i class="ti ti-plus"></i></button>
 
 <nav class="nav">
@@ -370,6 +378,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="form-group"><label>Сумма (необязательно)</label><input type="number" id="remind-amount" placeholder="0" inputmode="decimal"></div>
     <button class="btn-primary" onclick="addReminder()">Добавить</button>
     <button class="btn-cancel" onclick="closeModal('remind-modal')">Отмена</button>
+  </div>
+</div>
+
+<!-- AI ADVICE MODAL -->
+<div class="modal-overlay" id="ai-modal">
+  <div class="modal">
+    <h3>💡 Финансовый совет от ИИ</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">ИИ проанализирует твою статистику и даст персональные рекомендации.</div>
+    <div class="form-group">
+      <label>Свой вопрос (необязательно)</label>
+      <input type="text" id="ai-question" placeholder="Например: как накопить на отпуск?">
+    </div>
+    <button class="btn-primary" onclick="askAdvice()">Получить совет</button>
+    <div id="ai-result"></div>
+    <button class="btn-cancel" onclick="closeModal('ai-modal')">Закрыть</button>
   </div>
 </div>
 
@@ -985,6 +1008,72 @@ function renderDebts() {
     html += '</div>';
   });
   el.innerHTML = html;
+}
+
+// ===== AI ADVICE =====
+// ВАЖНО: вставь сюда URL своего сервера с Railway
+var AI_SERVER_URL = "https://web-production-a3c5f.up.railway.app";
+
+function openAiModal() {
+  document.getElementById('ai-result').innerHTML = '';
+  document.getElementById('ai-question').value = '';
+  document.getElementById('ai-modal').classList.add('open');
+}
+
+function buildStats() {
+  var n = new Date();
+  var mo = transactions.filter(function(t) { return t.month === n.getMonth() && t.year === n.getFullYear(); });
+  var inc = mo.filter(function(t) { return t.type === 'income'; }).reduce(function(s,t){return s+t.amount;}, 0);
+  var exp = mo.filter(function(t) { return t.type === 'expense'; }).reduce(function(s,t){return s+t.amount;}, 0);
+  var s = 'Валюта: ' + settings.currency + '\n';
+  s += 'Доход за месяц: ' + inc + '\n';
+  s += 'Расход за месяц: ' + exp + '\n';
+  s += 'Баланс: ' + (inc - exp) + '\n';
+  // Расходы по категориям
+  var catTotals = {};
+  mo.filter(function(t){return t.type==='expense';}).forEach(function(t){ catTotals[t.cat]=(catTotals[t.cat]||0)+t.amount; });
+  if (Object.keys(catTotals).length) {
+    s += 'Расходы по категориям:\n';
+    Object.entries(catTotals).forEach(function(e){ s += '  ' + e[0] + ': ' + e[1] + '\n'; });
+  }
+  // Цели
+  if (goals.length) {
+    s += 'Цели накопления:\n';
+    goals.forEach(function(g){ s += '  ' + g.name + ': накоплено ' + g.saved + ' из ' + g.target + '\n'; });
+  }
+  // Долги
+  if (debts.length) {
+    s += 'Долги:\n';
+    debts.forEach(function(d){
+      s += '  ' + (d.dir==='in'?'мне должны':'я должен') + ' ' + d.person + ': ' + (d.amount-d.paid) + ' осталось\n';
+    });
+  }
+  return s;
+}
+
+function askAdvice() {
+  var resultEl = document.getElementById('ai-result');
+  var question = document.getElementById('ai-question').value.trim();
+
+  if (!transactions.length && !goals.length && !debts.length) {
+    resultEl.innerHTML = '<div class="ai-answer">Сначала добавь немного данных — операции, цели или долги, чтобы я мог проанализировать.</div>';
+    return;
+  }
+
+  resultEl.innerHTML = '<div class="ai-loading"><div class="ai-spinner"></div>ИИ анализирует твои финансы...</div>';
+
+  fetch(AI_SERVER_URL + '/advice', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ stats: buildStats(), question: question })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    resultEl.innerHTML = '<div class="ai-answer">' + (data.advice || 'Не удалось получить ответ.') + '</div>';
+  })
+  .catch(function() {
+    resultEl.innerHTML = '<div class="ai-answer">Не удалось связаться с сервером. Проверь, что сервер запущен и URL указан верно.</div>';
+  });
 }
 
 loadSettings();
